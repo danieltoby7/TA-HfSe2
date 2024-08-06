@@ -1,0 +1,77 @@
+import matplotlib.pyplot as plt
+import pandas as pd
+import numpy as np
+
+plt.rcParams['font.size'] = 18
+plt.rcParams['font.family'] = 'Times New Roman'
+
+def read_trace_data(filename, temp, carrier_type, volume):
+    data = pd.read_csv(filename, sep='\s+')
+    if carrier_type == 'N':
+        data = data[(data.iloc[:, 1] == temp) & (data.iloc[:, 2] < 0)]
+        data.iloc[:, 2] = -data.iloc[:, 2] / volume
+    elif carrier_type == 'P':
+        data = data[(data.iloc[:, 1] == temp) & (data.iloc[:, 2] > 0)]
+        data.iloc[:, 2] = data.iloc[:, 2] / volume
+    return data
+
+# File paths for the data files
+file300 = r'D:\1. Kuliah\SEM 8\data HfSe2\newbtp\data300.dat'
+file500 = r'D:\1. Kuliah\SEM 8\data HfSe2\newbtp\data500.dat'
+file700 = r'D:\1. Kuliah\SEM 8\data HfSe2\newbtp\data700.dat'
+file900 = r'D:\1. Kuliah\SEM 8\data HfSe2\newbtp\data900.dat'
+
+# Unit cell volume in cm^3
+volume = 3.0547300773259224e-15  
+
+# Read data for different temperatures and carrier type 'P'
+dat300 = read_trace_data(file300, 300, 'P', volume)
+dat500 = read_trace_data(file500, 500, 'P', volume)
+dat700 = read_trace_data(file700, 700, 'P', volume)
+dat900 = read_trace_data(file900, 900, 'P', volume)
+
+# Data for electrical conductivity
+X300_kappa = dat300.iloc[:, 2]
+Y300_kappa = dat300.iloc[:, 7] 
+X500_kappa = dat500.iloc[:, 2]
+Y500_kappa = dat500.iloc[:, 7] 
+X700_kappa = dat700.iloc[:, 2]
+Y700_kappa = dat700.iloc[:, 7] 
+X900_kappa = dat900.iloc[:, 2]
+Y900_kappa = dat900.iloc[:, 7]  
+
+# Tau values for positive x axis values
+tau_300_neg = 32.49E-15
+tau_500_neg = 19.50E-15
+tau_700_neg = 13.93E-15
+tau_900_neg = 10.83E-15
+
+# Multiply y-axis values by tau for P-type carriers (positive x-axis values)
+Y300_kappa_neg = Y300_kappa * tau_300_neg 
+Y500_kappa_neg = Y500_kappa * tau_500_neg  
+Y700_kappa_neg = Y700_kappa * tau_700_neg 
+Y900_kappa_neg = Y900_kappa * tau_900_neg 
+# Y300_kappa_neg = Y300_kappa * 1e-14
+# Y500_kappa_neg = Y500_kappa * 1e-14 
+# Y700_kappa_neg = Y700_kappa * 1e-14 
+# Y900_kappa_neg = Y900_kappa * 1e-14 
+
+# Plotting
+fig, ax = plt.subplots(figsize=(6, 6))  # Make the figure square
+
+# Plot P-type carrier data for different temperatures
+ax.plot(X300_kappa, Y300_kappa_neg, color='blue', label='300 K')
+ax.plot(X500_kappa, Y500_kappa_neg, color='red', label='500 K')
+ax.plot(X700_kappa, Y700_kappa_neg, color='green', label='700 K')
+ax.plot(X900_kappa, Y900_kappa_neg, color='purple', label='900 K')
+
+# Set labels and legend
+ax.set_xlabel('$n_{H}$ (cm$^{-3}$)')
+ax.set_ylabel(r'$\kappa_{\epsilon}$ $(\frac{W}{m \cdot K})$')
+ax.set_xscale('log')  # set x-axis to logarithmic scale
+ax.set_xlim([1e11, 1e14])  # adjust range as needed
+ax.set_ylim([0, 6])
+ax.legend(loc='upper left')
+
+plt.tight_layout()
+plt.show()
