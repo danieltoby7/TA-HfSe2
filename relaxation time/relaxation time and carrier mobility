@@ -1,0 +1,209 @@
+import matplotlib.pyplot as plt
+import numpy as np
+from sklearn.metrics import r2_score
+
+# Constants
+m0 = 9.10938E-31  # in Kg
+hbar = 6.58212E-16  # in eV.s
+kB = 8.61733E-05  # in eV/K
+e = 1.60218E-19  # in C
+RytoeV = 13.605703976
+RytoNm = 2.1798741E-18
+
+class Materials:
+    def __init__(self, prefix):
+        self.prefix = prefix
+        self.h_k = []
+        self.e_k = []
+        self.h_E = []
+        self.e_E = []
+        self.h_DP = []
+        self.e_DP = []
+        self.StrVBM = []
+        self.StrCBM = []
+        self.Str = []
+        self.StrEtot = []
+        self.StrVac = []
+        self.C2D = 0.0
+        self.e_m = 0.0
+        self.h_m = 0.0
+
+def loadFile(filename, x, i, y, j):
+    with open(filename) as f:
+        for line in f:
+            if line.startswith("#"):
+                continue
+            else:
+                x.append(float(line.split()[i]))
+                y.append(float(line.split()[j]))
+
+def reg2order(x, y):
+    model = np.poly1d(np.polyfit(x, y, 2))
+    return model
+
+def reg1order(x, y):
+    model = np.poly1d(np.polyfit(x, y, 1))
+    return model
+
+def effectiveMass(model):
+    return np.abs(np.round(3.44e-30 / (model[2]) / 9.1093837015e-31, 4))
+
+def stiffnessConstant(model, area):
+    return np.abs(np.round(model[2] * 2.0 / area, 4))
+
+def mu(m, E, C, T):
+    result = 2.0 * e * (hbar ** 3) * C / (3.0 * kB * T * ((m * m0) ** 2) * E * E)
+    return result
+
+def tau(m, E, C, T):
+    result = 2.0 * e * (hbar ** 3) * C / (3.0 * kB * T * ((m * m0) ** 2) * E * E)
+    return ((m * m0) * result / e) * 1e15
+
+def checkR2(x, y, model):
+    return np.round(r2_score(y, model(x)), 4)
+
+def printFooter():
+    print('=================================================')
+
+def printHeader(header):
+    print('=================================================')
+    print(' ', header)
+    print('=================================================')
+
+# Unit Conversion
+dummy = []
+rawVac = []
+rawCBM = []
+rawVBM = []
+rawEnergy = []
+
+a = 3.756222912E-10  # in m
+area = 0.5 * np.sqrt(3) * a * a
+
+# Creating the materials
+HfSe2 = Materials('HfSe2')
+
+# Load E - k data
+loadFile(r'D:\1. Kuliah\SEM 8\data HfSe2\Files\vbmMK.dat', HfSe2.h_k, 0, HfSe2.h_E, 1)  # data VBM yang E dan K
+loadFile(r'D:\1. Kuliah\SEM 8\data HfSe2\Files\cbmMK.dat', HfSe2.e_k, 0, HfSe2.e_E, 1)  # data CBM yang E dan K
+loadFile(r'D:\1. Kuliah\SEM 8\data HfSe2\Files\homolumo.dat', rawVBM, 1, rawCBM, 2)  # data HOMO dan LUMO yang energi HOMO LUMO aja
+loadFile(r'D:\1. Kuliah\SEM 8\data HfSe2\Files\energi.dat', dummy, 0, rawEnergy, 1)  # energi akibat strain
+loadFile(r'D:\1. Kuliah\SEM 8\data HfSe2\Files\vl.dat', dummy, 0, rawVac, 1)  # nilai VL (ambil max aja dari avg.dat ga usah plotting)
+
+HfSe2.Str = [-0.015, -0.010, -0.005, 0.000, 0.005, 0.010, 0.015]
+
+ndata = np.array(HfSe2.Str).shape[0]
+
+for i in range(ndata):
+    HfSe2.StrVac.append(rawVac[i] * RytoeV)
+    HfSe2.StrCBM.append(rawCBM[i]- HfSe2.StrVac[i])
+    HfSe2.StrVBM.append(rawVBM[i] - HfSe2.StrVac[i])
+    HfSe2.StrEtot.append(rawEnergy[i] * RytoNm)
+
+# Manually input the effective masses m1 and m2 for holes and electrons
+hole_m1 = 0.3247  # Example value, replace with actual value
+hole_m2 = 0.1484  # Example value, replace with actual value
+electron_m1 = 2.9378  # Example value, replace with actual value
+electron_m2 = 0.1845  # Example value, replace with actual value
+
+# Calculate the average effective mass
+HfSe2.h_m = np.sqrt(hole_m1 * hole_m2)
+HfSe2.e_m = np.sqrt(electron_m1 * electron_m2)
+
+printHeader('HfSe2 Monolayer')
+print('  HOLE:')
+print('        m*       =', f'{HfSe2.h_m:>7.4f}', 'm0')
+
+########### Deformation Potential Constant for Hole
+regDP_h = reg1order(HfSe2.Str, HfSe2.StrVBM)
+HfSe2.h_DP = np.abs(float(regDP_h[1]))
+r2 = checkR2(HfSe2.Str, HfSe2.StrVBM, regDP_h)
+
+print('        Ed       =', f'{HfSe2.h_DP:>7.2f}', 'eV  (r^2:', f'{r2:>4.3f})')
+
+########### In-plane Stiffness for Hole
+regStrE = reg2order(HfSe2.Str, HfSe2.StrEtot)
+HfSe2.C2D = stiffnessConstant(regStrE, area)
+r2 = checkR2(HfSe2.Str, HfSe2.StrEtot, regStrE)
+
+print('        C2D      =', f'{HfSe2.C2D:>7.2f}', 'N/m (r^2:', f'{r2:>4.3f})')
+
+########### Carrier Mobility for Hole
+mu300h = mu(HfSe2.h_m, HfSe2.h_DP, HfSe2.C2D, 300)
+mu500h = mu(HfSe2.h_m, HfSe2.h_DP, HfSe2.C2D, 500)
+mu700h = mu(HfSe2.h_m, HfSe2.h_DP, HfSe2.C2D, 700)
+mu900h = mu(HfSe2.h_m, HfSe2.h_DP, HfSe2.C2D, 900)
+
+print('        mu  300K =', f'{mu300h:>7.4f}', '10^4 cm^2/(V.s)')
+print('            500K =', f'{mu500h:>7.4f}', '10^4 cm^2/(V.s)')
+print('            700K =', f'{mu700h:>7.4f}', '10^4 cm^2/(V.s)')
+print('            900K =', f'{mu900h:>7.4f}', '10^4 cm^2/(V.s)')
+
+########### Relaxation Time for Hole
+tau300h = tau(HfSe2.h_m, HfSe2.h_DP, HfSe2.C2D, 300)
+tau500h = tau(HfSe2.h_m, HfSe2.h_DP, HfSe2.C2D, 500)
+tau700h = tau(HfSe2.h_m, HfSe2.h_DP, HfSe2.C2D, 700)
+tau900h = tau(HfSe2.h_m, HfSe2.h_DP, HfSe2.C2D, 900)
+
+print('        tau 300K =', f'{tau300h:>7.2f}', 'fs')
+print('            500K =', f'{tau500h:>7.2f}', 'fs')
+print('            700K =', f'{tau700h:>7.2f}', 'fs')
+print('            900K =', f'{tau900h:>7.2f}', 'fs')
+
+########### Effective Masses for electron
+printFooter()
+print('  ELECTRON:')
+print('        m*       =', f'{HfSe2.e_m:>7.4f}', 'm0')
+
+########### Deformation Potential Constant for Electron
+regDP_e = reg1order(HfSe2.Str, HfSe2.StrCBM)
+HfSe2.e_DP = np.abs(float(regDP_e[1]))
+r2 = checkR2(HfSe2.Str, HfSe2.StrCBM, regDP_e)
+
+print('        Ed       =', f'{HfSe2.e_DP:>7.2f}', 'eV  (r^2:', f'{r2:>4.3f})')
+
+########### In-plane Stiffness for Electron
+regStrE = reg2order(HfSe2.Str, HfSe2.StrEtot)
+HfSe2.C2D = stiffnessConstant(regStrE, area)
+r2 = checkR2(HfSe2.Str, HfSe2.StrEtot, regStrE)
+
+print('        C2D      =', f'{HfSe2.C2D:>7.2f}', 'N/m (r^2:', f'{r2:>4.3f})')
+
+########### Carrier Mobility for Electron
+mu300e = mu(HfSe2.e_m, HfSe2.e_DP, HfSe2.C2D, 300)
+mu500e = mu(HfSe2.e_m, HfSe2.e_DP, HfSe2.C2D, 500)
+mu700e = mu(HfSe2.e_m, HfSe2.e_DP, HfSe2.C2D, 700)
+mu900e = mu(HfSe2.e_m, HfSe2.e_DP, HfSe2.C2D, 900)
+
+print('        mu  300K =', f'{mu300e:>7.4f}', '10^4 cm^2/(V.s)')
+print('            500K =', f'{mu500e:>7.4f}', '10^4 cm^2/(V.s)')
+print('            700K =', f'{mu700e:>7.4f}', '10^4 cm^2/(V.s)')
+print('            900K =', f'{mu900e:>7.4f}', '10^4 cm^2/(V.s)')
+
+########### Relaxation Time for Electron
+tau300e = tau(HfSe2.e_m, HfSe2.e_DP, HfSe2.C2D, 300)
+tau500e = tau(HfSe2.e_m, HfSe2.e_DP, HfSe2.C2D, 500)
+tau700e = tau(HfSe2.e_m, HfSe2.e_DP, HfSe2.C2D, 700)
+tau900e = tau(HfSe2.e_m, HfSe2.e_DP, HfSe2.C2D, 900)
+
+print('        tau 300K =', f'{tau300e:>7.2f}', 'fs')
+print('            500K =', f'{tau500e:>7.2f}', 'fs')
+print('            700K =', f'{tau700e:>7.2f}', 'fs')
+print('            900K =', f'{tau900e:>7.2f}', 'fs')
+printFooter()
+
+# Plotting
+strain_percentage = np.array(HfSe2.Str) * 100
+
+# Create the figure and adjust the size
+plt.figure(figsize=(8, 8))
+
+plt.plot(strain_percentage, HfSe2.StrVBM, marker='o', linestyle='-', label='Hole')
+plt.plot(strain_percentage, HfSe2.StrCBM, marker='s', linestyle='-', label='Elektron')
+
+plt.xlabel('Strain (%)')
+plt.ylabel('Perubahan energi (eV)')
+plt.legend()
+plt.grid(True)
+# plt.title('Deformation Potential Constant for Holes and Electrons in HfSe2')
+plt.show()
