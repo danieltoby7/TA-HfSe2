@@ -1,0 +1,54 @@
+import matplotlib.pyplot as plt
+from matplotlib import rcParamsDefault
+from matplotlib import gridspec
+import numpy as np
+import pandas as pd
+
+plt.rcParams['font.size'] = 18
+plt.rcParams['font.family'] = 'Times New Roman'
+
+# Import data for the band structure
+bands_HfSe2 = np.loadtxt(r'D:\1. Kuliah\SEM 8\data HfSe2\HfSe2.bands.gnu')
+
+# Import data for DOS
+e_HfSe2, dos_HfSe2, _ = np.loadtxt(r'D:\research\grp\HfSe2\HfSe2.pdos.dat.pdos_tot', unpack=True)
+
+# Record the values of LUMO and HOMO
+
+Fermi = 0
+fig = plt.figure(figsize=(8,5))
+
+
+spec = gridspec.GridSpec(ncols=2, nrows=1,
+                         width_ratios=[2,1], wspace=0.2,
+                         hspace=0.3)
+
+#--------BAND STRUCTURE
+ax0 = fig.add_subplot(spec[0])
+k = np.unique(bands_HfSe2[:, 0])
+bands = np.reshape(bands_HfSe2[:, 1], (-1, len(k)))
+
+for band in range(len(bands)):
+    ax0.plot(k, bands[band, :]-Fermi, color = 'purple', linewidth=1.5)
+    ax0.set_ylim([-5.7,1.3])
+    ax0.set_xlim([min(k),max(k)])
+
+
+ax0.axhline(0, linestyle=(0, (5, 5)), linewidth=0.75, color='k', alpha=0.5)
+ax0.axvline(0.6667, linewidth=0.75, color='k', alpha=0.5)
+ax0.axvline(1.2440, linewidth=0.75, color='k', alpha=0.5)
+ax0.set_xticks(ticks= [0, 0.6667, 1.2440, 1.5774],
+                       labels=['K', '$\Gamma$', 'M' ,'K'])
+ax0.set_ylabel(r'$E-E_\mathrm{F}$ (eV)')
+
+#--------DOS
+ax1 = fig.add_subplot(spec[1])
+ax1.plot(dos_HfSe2, e_HfSe2-Fermi,linewidth=1.5, color='purple')
+ax1.set_ylim([-5.7,1.3])
+ax1.axhline(0, linestyle=(0, (5, 5)), linewidth=0.75, color='k', alpha=0.5)
+ax1.set_xticks([])
+ax1.set_xlim([0,15])
+ax1.set_xlabel('DOS')
+
+
+plt.show()
