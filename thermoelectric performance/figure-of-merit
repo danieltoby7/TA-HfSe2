@@ -1,0 +1,121 @@
+import matplotlib.pyplot as plt
+import pandas as pd
+
+plt.rcParams['font.size'] = 18
+plt.rcParams['font.family'] = 'Times New Roman'
+
+# Function to read and filter trace data
+def read_trace_data(filename, temp, carrier_type, volume):
+    data = pd.read_csv(filename, sep='\s+')
+    if carrier_type == 'N':
+        data = data[(data.iloc[:, 1] == temp) & (data.iloc[:, 2] < 0)]
+        data.iloc[:, 2] = -data.iloc[:, 2] / volume  # Adjust for carrier concentration
+    elif carrier_type == 'P':
+        data = data[(data.iloc[:, 1] == temp) & (data.iloc[:, 2] > 0)]
+        data.iloc[:, 2] = data.iloc[:, 2] / volume  # Adjust for carrier concentration
+    return data
+
+# File paths for the data files
+file300 = r'D:\1. Kuliah\SEM 8\data HfSe2\newbtp\data300.dat'
+file500 = r'D:\1. Kuliah\SEM 8\data HfSe2\newbtp\data500.dat'
+file700 = r'D:\1. Kuliah\SEM 8\data HfSe2\newbtp\data700.dat'
+file900 = r'D:\1. Kuliah\SEM 8\data HfSe2\newbtp\data900.dat'
+
+# Unit cell volume in cm^3
+volume = 3.0547300773259224e-15
+
+# Tau values for positive and negative x axis values
+tau_values = {
+    '300 K': {'pos': 173.63E-15, 'neg': 32.49E-15},
+    '500 K': {'pos': 104.18E-15, 'neg': 19.50E-15},
+    '700 K': {'pos': 74.41E-15, 'neg': 13.93E-15},
+    '900 K': {'pos': 57.88E-15, 'neg': 10.83E-15}
+}
+
+# Lattice thermal conductivity values (kappa_lattice) for corresponding temperatures
+kappa_lattice = {
+    '300 K': 0.32447841213093076,
+    '500 K': 0.19682549821222858,
+    '700 K': 0.14102209882945715,
+    '900 K': 0.10982344484695679 
+}
+
+# Function to load and process data
+def load_and_process_data(file, tau_pos, tau_neg, T, kappa_lattice, carrier_type):
+    data = pd.read_csv(file, sep='\s+|\s+', engine='python')
+    Seebeck = data.iloc[:, 4]
+    Sigma = data.iloc[:, 5]
+    Kappa = data.iloc[:, 7]
+    X = data.iloc[:, 2] / volume  # Adjust X-axis for carrier concentration
+    
+    # Apply tau values
+    Sigma = Sigma * (tau_pos if carrier_type == 'N' else tau_neg)
+    Kappa = Kappa * (tau_pos if carrier_type == 'N' else tau_neg)
+    
+    # Calculate Figure of Merit (FoM)
+    FoM = (Seebeck ** 2 * Sigma * T) / (Kappa + kappa_lattice) 
+    return X, FoM
+
+# Create the plot
+fig, ax = plt.subplots(figsize=(6, 6))
+
+# Process each dataset
+max_FoM_with_x_values = {}  # Dictionary to store max ZT and corresponding X values
+colors = {
+    '300 K': 'blue',
+    '500 K': 'red',
+    '700 K': 'green',
+    '900 K': 'purple'
+}
+
+input_files = {
+    '300 K': file300,
+    '500 K': file500,
+    '700 K': file700,
+    '900 K': file900
+}
+
+for label, file in input_files.items():
+    T = int(label.split()[0])  # Extract temperature from label
+    tau_pos = tau_values[label]['pos']
+    tau_neg = tau_values[label]['neg']
+    
+    # N-type carriers
+    X_N, FoM_N = load_and_process_data(file, tau_pos, tau_neg, T, kappa_lattice[label], 'N')
+    ax.plot(X_N, FoM_N, label=f'N-type {label}', linestyle='-', color=colors[label])
+    
+    # Find maximum ZT within the specified x range
+    idx = (X_N >= 1e11) & (X_N <= 1e14)
+    
+    if idx.any():  # Check if there are any valid indices
+        max_FoM = max(FoM_N[idx])
+        max_X = X_N[idx][FoM_N[idx].idxmax()]  # Find corresponding X value for max FoM using idxmax
+        max_FoM_with_x_values[f'N-type {label}'] = {'max_FoM': max_FoM, 'max_X': max_X}
+    else:
+        max_FoM_with_x_values[f'N-type {label}'] = {'max_FoM': None, 'max_X': None}
+
+plt.xlabel('$n_{E}$ (cm$^{-3}$)')
+plt.ylabel('ZT')
+plt.xscale('log')  # Set x-axis to logarithmic scale
+plt.xlim([1e11, 1e14])
+plt.ylim(0, 5)
+
+# Remove ticks and labels from right y-axis
+ax.tick_params(axis='y', which='both', right=False, labelright=False)
+
+# Move all ticks to the left side including labels
+ax.yaxis.tick_left()
+
+# Print maximum ZT values and corresponding x-axis values
+print("Maximum ZT Values and Corresponding X-axis Values for N-type carriers within [1e11, 1e14] cm$^{-3}$:")
+for key, values in max_FoM_with_x_values.items():
+    max_FoM = values['max_FoM']
+    max_X = values['max_X']
+    if max_FoM is not None and max_X is not None:
+        print(f"{key}: Max ZT = {max_FoM:.3f}, Corresponding $n_{{E}}$ = {max_X:.3e} cm$^{-3}$")
+    else:
+        print(f"{key}: No valid data points within the specified range.")
+
+
+plt.tight_layout()
+plt.show()
