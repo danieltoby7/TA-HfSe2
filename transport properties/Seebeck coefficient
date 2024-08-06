@@ -1,0 +1,73 @@
+import matplotlib.pyplot as plt
+import pandas as pd
+import numpy as np
+
+plt.rcParams['font.size'] = 18
+plt.rcParams['font.family'] = 'Times New Roman'
+
+def read_trace_data(filename, temp, carrier_type, volume):
+    data = pd.read_csv(filename, sep='\s+')
+    if carrier_type == 'N':
+        data = data[(data.iloc[:, 1] == temp) & (data.iloc[:, 2] < 0)]
+        data.iloc[:, 2] = -data.iloc[:, 2]
+    elif carrier_type == 'P':
+        data = data[(data.iloc[:, 1] == temp) & (data.iloc[:, 2] > 0)]
+        data.iloc[:, 2] = data.iloc[:, 2]
+    return data
+
+# File paths for the data files
+file300 = r'D:\1. Kuliah\SEM 8\data HfSe2\newbtp\data300.dat'
+file500 = r'D:\1. Kuliah\SEM 8\data HfSe2\newbtp\data500.dat'
+file700 = r'D:\1. Kuliah\SEM 8\data HfSe2\newbtp\data700.dat'
+file900 = r'D:\1. Kuliah\SEM 8\data HfSe2\newbtp\data900.dat'
+
+# Unit cell volume in cm^3
+volume = 3.0547300773259224e-15
+
+# Read data for different temperatures and carrier type 'P'
+dat300 = read_trace_data(file300, 300, 'P', volume)
+dat500 = read_trace_data(file500, 500, 'P', volume)
+dat700 = read_trace_data(file700, 700, 'P', volume)
+dat900 = read_trace_data(file900, 900, 'P', volume)
+
+# Data for Seebeck coefficient
+X300_seebeck = dat300.iloc[:, 2] / volume  # Adjust X-axis for carrier concentration
+Y300_seebeck = dat300.iloc[:, 4] * 1e6 
+X500_seebeck = dat500.iloc[:, 2] / volume
+Y500_seebeck = dat500.iloc[:, 4] * 1e6 
+X700_seebeck = dat700.iloc[:, 2] / volume 
+Y700_seebeck = dat700.iloc[:, 4] * 1e6 
+X900_seebeck = dat900.iloc[:, 2] / volume
+Y900_seebeck = dat900.iloc[:, 4] * 1e6 
+
+# Tau values for positive x axis values
+# Multiply y-axis values by tau for P-type carriers (positive x-axis values)
+Y300_seebeck_pos = Y300_seebeck
+Y500_seebeck_pos = Y500_seebeck
+Y700_seebeck_pos = Y700_seebeck
+Y900_seebeck_pos = Y900_seebeck
+
+# Plotting
+fig, ax = plt.subplots(figsize=(6, 6))  # Adjusted size to match the electrical conductivity plot
+
+# Plot P-type carrier data for different temperatures
+ax.plot(X300_seebeck, Y300_seebeck_pos, color='blue', label='300 K')
+ax.plot(X500_seebeck, Y500_seebeck_pos, color='red', label='500 K')
+ax.plot(X700_seebeck, Y700_seebeck_pos, color='green', label='700 K')
+ax.plot(X900_seebeck, Y900_seebeck_pos, color='purple', label='900 K')
+
+# Set labels and legend
+ax.set_xlabel('$n_{H}$ (cm$^{-3}$)')
+ax.set_ylabel('Koefisien Seebeck (µV/K)')
+ax.set_xscale('log')  # set x-axis to logarithmic scale
+ax.set_xlim([1e11, 1e14])  # adjust range as needed
+ax.set_ylim([0, 800])
+ax.legend(loc='upper left')
+
+# Add ticks to the right side of the y-axis
+# ax_right = ax.twinx()
+# ax_right.set_yticks(ax.get_yticks())
+# ax_right.set_ylim(ax.get_ylim())
+
+plt.tight_layout()
+plt.show()
