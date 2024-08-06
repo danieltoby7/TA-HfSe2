@@ -1,0 +1,75 @@
+import matplotlib.pyplot as plt
+import pandas as pd
+import numpy as np
+
+# Read data for different temperatures
+dat300 = pd.read_csv(r'D:\1. Kuliah\SEM 8\data HfSe2\newbtp\data300.dat', sep='\s+')
+dat500 = pd.read_csv(r'D:\1. Kuliah\SEM 8\data HfSe2\newbtp\data500.dat', sep='\s+')
+dat700 = pd.read_csv(r'D:\1. Kuliah\SEM 8\data HfSe2\newbtp\data700.dat', sep='\s+')
+dat900 = pd.read_csv(r'D:\1. Kuliah\SEM 8\data HfSe2\newbtp\data900.dat', sep='\s+')
+
+E_Fermi = -1.7371
+
+# Data koefisien seebeck
+X300_sigma = dat300.iloc[:, 0] * 13.6057 - E_Fermi
+Y300_sigma = dat300.iloc[:, 5] * 25/3.14 * 1e-7
+X500_sigma = dat500.iloc[:, 0] * 13.6057 - E_Fermi
+Y500_sigma = dat500.iloc[:, 5] * 25/3.14 * 1e-7
+X700_sigma = dat700.iloc[:, 0] * 13.6057 - E_Fermi
+Y700_sigma = dat700.iloc[:, 5] * 25/3.14 * 1e-7
+X900_sigma = dat900.iloc[:, 0] * 13.6057 - E_Fermi
+Y900_sigma = dat900.iloc[:, 5] * 25/3.14 * 1e-7
+
+# Tau values for positive x axis values
+tau_300_pos = 173.64E-15
+tau_500_pos = 104.18E-15
+tau_700_pos = 74.41E-15
+tau_900_pos = 57.88E-15
+
+# Tau values for negative x axis values
+tau_300_neg = 32.49E-15
+tau_500_neg = 19.50E-15
+tau_700_neg = 13.93E-15
+tau_900_neg = 10.83E-15
+
+# Multiply y-axis values for positive and negative x-axis values by tau
+Y300_sigma_pos = Y300_sigma * tau_300_pos
+Y500_sigma_pos = Y500_sigma * tau_500_pos
+Y700_sigma_pos = Y700_sigma * tau_700_pos
+Y900_sigma_pos = Y900_sigma * tau_900_pos
+
+Y300_sigma_neg = Y300_sigma * tau_300_neg
+Y500_sigma_neg = Y500_sigma * tau_500_neg
+Y700_sigma_neg = Y700_sigma * tau_700_neg
+Y900_sigma_neg = Y900_sigma * tau_900_neg
+
+
+# Plotting
+fig, ax = plt.subplots(figsize=(8, 4))
+
+# Plot positive x-axis values
+ax.plot(X300_sigma[X300_sigma > 0], Y300_sigma_pos[X300_sigma > 0], color='blue', label='300 K (Pos)')
+ax.plot(X500_sigma[X500_sigma > 0], Y500_sigma_pos[X500_sigma > 0], color='red', label='500 K (Pos)')
+ax.plot(X700_sigma[X700_sigma > 0], Y700_sigma_pos[X700_sigma > 0], color='green', label='700 K (Pos)')
+ax.plot(X900_sigma[X900_sigma > 0], Y900_sigma_pos[X900_sigma > 0], color='purple', label='900 K (Pos)')
+
+# Plot negative x-axis values
+ax.plot(X300_sigma[X300_sigma < 0], Y300_sigma_neg[X300_sigma < 0], color='blue', label='300 K (Neg)')
+ax.plot(X500_sigma[X500_sigma < 0], Y500_sigma_neg[X500_sigma < 0], color='red', label='500 K (Neg)')
+ax.plot(X700_sigma[X700_sigma < 0], Y700_sigma_neg[X700_sigma < 0], color='green', label='700 K (Neg)')
+ax.plot(X900_sigma[X900_sigma < 0], Y900_sigma_pos[X900_sigma < 0], color='purple', label='900 K (Pos)')
+
+# Set labels and legend
+ax.set_xlabel('$E - E_{\mathrm{F}}$ (eV)')
+ax.set_ylabel(r'${\sigma} \times 10^{7}$ $(\frac{1}{\Omega \cdot m})$')
+ax.set_xlim([-1.5, 1.5])
+ax.set_ylim([0, 13])
+ax.legend(['300 K', '500 K', '700 K', '900 K'], loc='upper left')
+
+# Add ticks to the right side of the y-axis
+ax_right = ax.twinx()
+ax_right.set_yticks(ax.get_yticks())
+ax_right.set_ylim(ax.get_ylim())
+
+plt.tight_layout()
+plt.show()
