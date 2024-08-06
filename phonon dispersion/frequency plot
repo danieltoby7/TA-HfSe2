@@ -1,0 +1,53 @@
+import matplotlib.pyplot as plt
+import numpy as np
+
+plt.rcParams['font.size'] = 18
+plt.rcParams['font.family'] = 'Times New Roman'
+
+# Load the data
+file_path = r'D:\1. Kuliah\SEM 8\SKRIPSI\output02\phononDispersion.dat'
+data = np.loadtxt(file_path)
+
+# Extract columns
+column1 = data[:, 0]
+column2 = data[:, 1]
+
+# Initialize lists to hold segmented data
+segmented_column1 = []
+segmented_column2 = []
+
+# Add NaNs to break lines at segment boundaries
+for i in range(len(column1) - 1):
+    segmented_column1.append(column1[i])
+    segmented_column2.append(column2[i])
+    
+    if column1[i] >= column1[i + 1]:
+        segmented_column1.append(np.nan)
+        segmented_column2.append(np.nan)
+
+# Add the last points
+segmented_column1.append(column1[-1])
+segmented_column2.append(column2[-1])
+
+# Create a figure and plot as a line plot
+plt.figure(figsize=(6, 6))
+
+# Plot the data with NaN breaks
+plt.plot(segmented_column1, segmented_column2, color='purple', linestyle='-', linewidth=1.5, marker='')
+
+# Add labels and title
+x_ticks = [0.00000000, 0.09391920, 0.17525630, 0.22221590]
+x_labels = ['K', '$\Gamma$', 'M', 'K']
+plt.xticks(x_ticks, x_labels)
+plt.ylabel('Frekuensi (Thz)')
+plt.xlim(0, 0.22221590)
+
+# Add vertical lines at K and M points
+for x in [0.09391920, 0.17525630]:
+    plt.axvline(x=x, color='grey', linestyle='-')
+
+# Add a horizontal dashed line at y=0
+plt.axhline(y=0, color='grey', linestyle='--')
+
+# Show the plot
+plt.show()
