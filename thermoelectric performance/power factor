@@ -1,0 +1,140 @@
+import matplotlib.pyplot as plt
+import pandas as pd
+
+plt.rcParams['font.size'] = 18
+plt.rcParams['font.family'] = 'Times New Roman'
+
+def read_trace_data(filename, temp, carrier_type, volume):
+    data = pd.read_csv(filename, sep='\s+')
+    if carrier_type == 'N':
+        data = data[(data.iloc[:, 1] == temp) & (data.iloc[:, 2] < 0)]
+        data.iloc[:, 2] = -data.iloc[:, 2] / volume  # Adjust for carrier concentration
+    elif carrier_type == 'P':
+        data = data[(data.iloc[:, 1] == temp) & (data.iloc[:, 2] > 0)]
+        data.iloc[:, 2] = data.iloc[:, 2] / volume  # Adjust for carrier concentration
+    return data
+
+# File paths for the data files
+file300 = r'D:\1. Kuliah\SEM 8\data HfSe2\newbtp\data300.dat'
+file500 = r'D:\1. Kuliah\SEM 8\data HfSe2\newbtp\data500.dat'
+file700 = r'D:\1. Kuliah\SEM 8\data HfSe2\newbtp\data700.dat'
+file900 = r'D:\1. Kuliah\SEM 8\data HfSe2\newbtp\data900.dat'
+
+# Unit cell volume in cm^3
+volume = 3.0547300773259224e-16
+
+# Tau values for positive and negative x axis values
+tau_values = {
+    '300 K': {'pos': 173.63E-15, 'neg': 32.49E-15},
+    '500 K': {'pos': 104.18E-15, 'neg': 19.50E-15},
+    '700 K': {'pos': 74.41E-15, 'neg': 13.93E-15},
+    '900 K': {'pos': 57.88E-15, 'neg': 10.83E-15}
+}
+
+# Lattice thermal conductivity values (kappa_lattice) for corresponding temperatures
+kappa_lattice = {
+    '300 K': 0.32447841213093076,
+    '500 K': 0.19682549821222858,
+    '700 K': 0.14102209882945715,
+    '900 K': 0.10982344484695679
+}
+
+# Function to load and process data
+def load_and_process_data(file, tau_pos, tau_neg, T, kappa_lattice, carrier_type):
+    data = pd.read_csv(file, sep='\s+|\s+', engine='python')
+    Seebeck = data.iloc[:, 4]
+    Sigma = data.iloc[:, 5] * (tau_pos if carrier_type == 'N' else tau_neg)
+    Kappa = data.iloc[:, 7] * (tau_pos if carrier_type == 'N' else tau_neg)
+    X = data.iloc[:, 2] / volume  # Adjust X-axis for carrier concentration
+    
+    # Calculate Power Factor (PF) and convert to mW/mK^2
+    PF = (Seebeck ** 2 * Sigma) * 1e3  # Convert to mW/mK^2
+    
+    return X, PF, Seebeck, Sigma, Kappa
+
+# Create the plot
+fig, ax = plt.subplots(figsize=(6, 6))
+
+# Process each dataset
+max_PF_values = {}
+colors = {
+    '300 K': 'blue',
+    '500 K': 'red',
+    '700 K': 'green',
+    '900 K': 'purple'
+}
+
+input_files = {
+    '300 K': file300,
+    '500 K': file500,
+    '700 K': file700,
+    '900 K': file900
+}
+
+for label, file in input_files.items():
+    T = int(label.split()[0])  # Extract temperature from label
+    tau_pos = tau_values[label]['pos']
+    tau_neg = tau_values[label]['neg']
+    
+    # N-type carriers
+    X_N, PF_N, Seebeck_N, Sigma_N, Kappa_N = load_and_process_data(file, tau_pos, tau_neg, T, kappa_lattice[label], 'N')
+    ax.plot(X_N, PF_N, label=f'N-type {label}', linestyle='-', color=colors[label])
+    
+    # Find maximum PF within the specified x range
+    idx = (X_N >= 1e11) & (X_N <= 1e14)
+    if idx.any():
+        max_idx = PF_N[idx].idxmax()
+        max_PF = PF_N[idx].max()
+        max_X = X_N[max_idx]
+        max_Seebeck = Seebeck_N[max_idx]
+        max_Sigma = Sigma_N[max_idx]
+        max_Kappa = Kappa_N[max_idx]
+        max_PF_values[f'N-type {label}'] = {
+            'max_PF': max_PF,
+            'max_X': max_X,
+            'max_Seebeck': max_Seebeck,
+            'max_Sigma': max_Sigma,
+            'max_Kappa': max_Kappa
+        }
+    else:
+        max_PF_values[f'N-type {label}'] = {
+            'max_PF': None,
+            'max_X': None,
+            'max_Seebeck': None,
+            'max_Sigma': None,
+            'max_Kappa': None
+        }
+
+plt.xlabel('$n_{E}$ (cm$^{-3}$)')
+plt.ylabel('PF (mW/mK$^2$)')
+plt.xscale('log')  # Set x-axis to logarithmic scale
+plt.xlim([1e11, 1e14])
+
+# Set y-axis limits and ticks for primary y-axis (ax)
+ax.set_ylim([0, 10])  # Adjust as per your data range
+ax.set_yticks(range(0, 11, 2))  # Adjust ticks as desired
+
+# Remove ticks and labels from right y-axis
+ax_right = ax.twinx()
+ax_right.tick_params(axis='y', right=False, labelright=False)
+
+# Set ticks and labels to the left y-axis
+ax.tick_params(axis='y', left=True, labelleft=True)
+ax.set_ylabel('PF (mW/m $\cdot$ K$^2$)', labelpad=15)  # Left y-axis label with padding
+
+plt.tight_layout()
+plt.show()
+
+# Print maximum PF values and corresponding details
+print("Maximum PF Values and Corresponding Details for N-type carriers within [1e11, 1e14] cm$^{-3}$:")
+for key, values in max_PF_values.items():
+    max_PF = values['max_PF']
+    max_X = values['max_X']
+    max_Seebeck = values['max_Seebeck']
+    max_Sigma = values['max_Sigma']
+    max_Kappa = values['max_Kappa']
+    if max_PF is not None:
+        print(f"{key}: Max PF = {max_PF:.3f} mW/mK^2, Corresponding $n_{{E}}$ = {max_X:.3e} cm$^{{-3}}$")
+        print(f"    Seebeck coefficient = {max_Seebeck:.3f} μV/K, Sigma = {max_Sigma:.3e} S/m, Kappa = {max_Kappa:.3e} W/mK")
+    else:
+        print(f"{key}: No valid data points within the specified range.")
