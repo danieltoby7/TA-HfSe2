@@ -1,1 +1,48 @@
+import numpy as np
+import matplotlib.pyplot as plt
+import pandas as pd
+
+def scaling_x(bc, xsc):
+    xbcnew = np.zeros(xsc.size)
+    for i in range(0, xsc.size):
+        xbcnew[i] = bc[0, 0] + ((xsc[i] - xsc[0]) * (bc[-1, 0] - bc[0, 0]) / (xsc[-1] - xsc[0]))
+    print(xbcnew)
+    return xbcnew
+     
+
+bc1 = np.loadtxt('HfSe2.bands.gnu')
+np.max(bc1[:, 0])
+# Fermi level
+ax = plt.axes()
+plt.scatter(bc1[:, 0], bc1[:, 1], s=6, c='tab:orange')
+plt.ylim([-2, 3])
+plt.xlim([0, np.max(bc1[:, 0])])
+
+sc1 = np.fromfile('HfSe2.dat')
+x_tes = sc1[0::3]
+
+dummy = pd.DataFrame({
+    'no': np.arange(x_tes.size),
+    "x": x_tes
+})
+
+npts = dummy[dummy['x'] == 0.00].iloc[-1, 0] + 1
+nkpt = -1
+Asc1 = sc1.reshape([nkpt, npts, 3])
+
+xsc1 = Asc1[:, 0, 0]
+ysc1 = Asc1[0, :, 1]
+
+xsc1new = scaling_x(bc1, xsc1)
+
+plt.pcolormesh(xsc1new, ysc1, Asc1[:, :, 2].T, shading='auto')
+plt.scatter(bc1[:, 0], bc1[:, 1], s=6, color='white')
+plt.ylim([-2, 3])
+
+# Set the tick positions and labels for Gamma, M, K, and Gamma
+tick_positions = [0.0, 0.5774, 0.9107, np.max(xsc1new)]
+tick_labels = [r'$\Gamma$', 'M', 'K', r'$\Gamma$']
+plt.xticks(tick_positions, tick_labels)
+plt.legend(['Basecell'])
+plt.savefig('scaledHfSe2.png')
 
